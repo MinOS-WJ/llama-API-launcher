@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>llama.cpp API 启动器</title>
+    <style>
+        :root{
+            --bg:#ffffff; --panel:#f5f5f5; --input:#ffffff; --border:#c8c8c8;
+            --text:#000000; --muted:#666666; --accent:#0058a3; --accent-h:#003f7a;
+            --ok:#0a7a32; --ok-h:#085a26; --err:#c3272b; --err-h:#9a1f23;
+            --hover:#eaeaea; --row-line:#e0e0e0;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{
+            font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+            background:var(--bg); color:var(--text); line-height:1.45;
+        }
+        /* 顶栏面板 */
+        .header{
+            background:var(--panel); padding:8px 12px; border-bottom:1px solid var(--border);
+            display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+            position:sticky; top:0; z-index:10;
+        }
+        .header-left{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+        .header h1{font-size:1rem; font-weight:600; color:var(--text);}
+        .status{font-size:.78rem; padding:2px 8px; background:var(--border); color:var(--text);}
+        .status.running{background:var(--ok); color:#fff;}
+        .status.stopped{background:var(--err); color:#fff;}
+        .header-btn{
+            padding:6px 18px; border:1px solid var(--border); background:var(--input);
+            color:var(--text); font-size:.85rem; cursor:pointer; min-width:90px;
+        }
+        .header-btn.start{background:var(--ok); border-color:var(--ok); color:#fff;}
+        .header-btn.start:hover{background:var(--ok-h);}
+        .header-btn.stop{background:var(--err); border-color:var(--err); color:#fff;}
+        .header-btn.stop:hover{background:var(--err-h);}
+        .header-btn:disabled{background:var(--input); border-color:var(--border); cursor:not-allowed; color:var(--muted);}
+        /* 主区域 */
+        .main{padding:10px; max-width:900px; margin:0 auto;}
+        .section{background:var(--panel); border:1px solid var(--border); padding:10px; margin-bottom:10px;}
+        .section-title{
+            font-size:.78rem; font-weight:600; color:var(--muted); margin-bottom:8px;
+            display:flex; justify-content:space-between; align-items:center;
+        }
+        .form-row{display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;}
+        .form-row:last-child{margin-bottom:0;}
+        .form-row label{font-size:.85rem; flex-shrink:0;}
+        .form-row input[type=text], .form-row select{
+            flex:1; min-width:120px; padding:5px 6px; border:1px solid var(--border);
+            background:var(--input); color:var(--text); font-size:.85rem;
+        }
+        .form-row input[type=text]:focus, .form-row select:focus{outline:none; border-color:var(--accent);}
+        .form-row input[readonly]{background:var(--panel); color:var(--muted);}
+        .form-row button, .small-btn{
+            padding:5px 10px; border:1px solid var(--accent); background:var(--accent);
+            color:#fff; font-size:.85rem; cursor:pointer;
+        }
+        .form-row button:hover{background:var(--accent-h);}
+        .form-row button:disabled{background:var(--input); border-color:var(--border); color:var(--muted); cursor:not-allowed;}
+        .detect-label{font-size:.85rem; font-weight:600;}
+        .detect-label.ok{color:var(--ok);}
+        .detect-label.bad{color:var(--err);}
+        .btn-secondary{background:var(--input); border-color:var(--border); color:var(--text);}
+        .btn-secondary:hover{background:var(--hover);}
+        .btn-primary{background:var(--accent); border:1px solid var(--accent); color:#fff;}
+        .btn-primary:hover{background:var(--accent-h);}
+        .btn-primary:disabled{background:var(--input); border-color:var(--border); color:var(--muted); cursor:not-allowed;}
+        .clear-btn{padding:2px 8px; font-size:.75rem; background:var(--input); border:1px solid var(--border); color:var(--text); cursor:pointer;}
+        .clear-btn:hover{background:var(--hover);}
+        /* 日志面板 */
+        .log-panel{
+            background:var(--input); border:1px solid var(--border); height:240px; overflow-y:auto;
+            padding:6px; font-family:Consolas,Monaco,'Courier New',monospace; font-size:.78rem;
+        }
+        .log-line{margin-bottom:1px; white-space:pre-wrap; word-break:break-all;}
+        .log-line.out{color:var(--text);}
+        .log-line.err{color:#a30000;}
+        .log-line.cmd{color:var(--accent);}
+        .log-line.rc{color:#8a5a00;}
+        /* 弹窗 */
+        .modal-overlay{
+            position:fixed; inset:0; background:rgba(0,0,0,.4); display:none;
+            justify-content:center; align-items:center; z-index:1000; padding:10px;
+        }
+        .modal-overlay.show{display:flex;}
+        .modal{
+            background:var(--bg); border:1px solid var(--border); width:100%; max-width:720px;
+            max-height:90vh; overflow:hidden; display:flex; flex-direction:column;
+        }
+        .modal-header{
+            padding:10px 12px; border-bottom:1px solid var(--border); background:var(--panel);
+            display:flex; justify-content:space-between; align-items:center;
+        }
+        .modal-header h2{font-size:.95rem;}
+        .modal-header button{background:none; border:none; color:var(--muted); font-size:1.2rem; line-height:1; cursor:pointer;}
+        .modal-header button:hover{color:var(--text);}
+        .modal-body{padding:10px; overflow-y:auto; flex:1;}
+        .modal-footer{
+            padding:10px; border-top:1px solid var(--border); background:var(--panel);
+            display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+        }
+        .modal-footer .progress-bar{flex:1; min-width:100px; height:18px; background:var(--input); border:1px solid var(--border);}
+        .modal-footer .progress-fill{height:100%; background:var(--accent);}
+        .split-panel{display:flex; gap:10px;}
+        .split-panel>div{flex:1; min-width:0;}
+        .list-box{background:var(--input); border:1px solid var(--border); overflow-y:auto;}
+        .list-box div{
+            padding:5px 6px; cursor:pointer; font-size:.78rem;
+            border-bottom:1px solid var(--row-line); word-break:break-all;
+        }
+        .list-box div:last-child{border-bottom:none;}
+        .list-box div:hover{background:var(--hover);}
+        .list-box div.selected{background:var(--accent); color:#fff;}
+        #browserList{height:300px;}
+        #releaseList, #assetList{height:200px;}
+        #configsList{height:240px;}
+        .text-center{text-align:center; color:var(--muted); padding:10px;}
+        .browser-path-row{display:flex; gap:6px; margin-bottom:8px;}
+        .browser-path-row input{flex:1; min-width:0;}
+        /* 响应式：窄屏纵向堆叠、控件全宽 */
+        @media (max-width:640px){
+            .main{padding:8px;}
+            .form-row{flex-direction:column; align-items:stretch;}
+            .form-row label{width:auto;}
+            .form-row input[type=text], .form-row select{width:100%;}
+            .form-row button, .small-btn{width:100%;}
+            #hostInput, #portInput{flex:1 1 auto !important; width:100%;}
+            .split-panel{flex-direction:column;}
+            .browser-path-row{flex-direction:column;}
+            .browser-path-row input{width:100%;}
+            .log-panel{height:180px;}
+            #browserList{height:260px;}
+            #releaseList, #assetList{height:160px;}
+            #configsList{height:200px;}
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>llama.cpp API 启动器</h1>
+            <span class="status stopped" id="statusLabel">未运行</span>
+        </div>
+        <button class="header-btn start" id="toggleBtn" onclick="toggleServer()">▶ 启动</button>
+    </div>
+
+    <div class="main">
+        <!-- 路径设置 -->
+        <div class="section">
+            <div class="section-title"><span>路径设置</span></div>
+            <div class="form-row">
+                <label>llama.cpp：</label>
+                <input type="text" id="llamacppDir" placeholder="选择 llama.cpp 目录">
+                <button onclick="openBrowser('llamacppDir','dir')">浏览…</button>
+                <span class="detect-label bad" id="detectLabel">✗ 未设置</span>
+                <button class="btn-secondary" onclick="openVersionManager()">版本管理</button>
+            </div>
+            <div class="form-row">
+                <label>模型目录：</label>
+                <input type="text" id="modelDir" placeholder="选择模型目录">
+                <button onclick="openBrowser('modelDir','dir')">浏览…</button>
+            </div>
+            <div class="form-row">
+                <label>参数方案：</label>
+                <input type="text" id="profilesPath" readonly placeholder="选择方案文件">
+                <button onclick="openBrowser('profilesPath','file')">选择…</button>
+                <button class="btn-secondary" onclick="showConfigsList()">方案集</button>
+            </div>
+        </div>
+
+        <!-- 运行配置 -->
+        <div class="section">
+            <div class="section-title"><span>运行配置</span></div>
+            <div class="form-row">
+                <label>模型：</label>
+                <select id="modelSelect"></select>
+                <label>方案：</label>
+                <select id="profileSelect"></select>
+            </div>
+            <div class="form-row">
+                <label>监听地址：</label>
+                <input type="text" id="hostInput" value="127.0.0.1" style="flex:0 0 160px;">
+                <label style="width:50px;">端口：</label>
+                <input type="text" id="portInput" value="8080" style="flex:0 0 80px;">
+            </div>
+        </div>
+
+        <!-- 日志 -->
+        <div class="section">
+            <div class="section-title">
+                <span>日志</span>
+                <button class="clear-btn" onclick="clearLogs()">清空</button>
+            </div>
+            <div class="log-panel" id="logPanel"></div>
+        </div>
+    </div>
+
+    <!-- 目录浏览器 -->
+    <div class="modal-overlay" id="browserModal">
+        <div class="modal" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2 id="browserTitle">选择目录</h2>
+                <button onclick="closeBrowser()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="browser-path-row">
+                    <input type="text" id="browserPath" readonly placeholder="(根)">
+                    <button onclick="browserGoUp()" id="browserUpBtn">上级</button>
+                    <button onclick="browserRefresh()">刷新</button>
+                </div>
+                <div class="list-box" id="browserList"></div>
+                <div id="browserError" style="color:#ff6b6b; font-size:12px; margin-top:6px; min-height:16px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeBrowser()">取消</button>
+                <button class="btn-primary" onclick="browserConfirm()" id="browserConfirmBtn">选择此项</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 版本管理 -->
+    <div class="modal-overlay" id="versionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>llama.cpp 版本管理</h2>
+                <button onclick="closeVersionManager()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <span id="currentDirLabel" style="font-weight: 600; flex: 1;">当前：未识别</span>
+                    <button class="btn-secondary" onclick="refreshCurrent()">刷新当前</button>
+                    <label style="width: auto;">平台：</label>
+                    <select id="osFilter" style="width: auto;" onchange="refreshAssets()">
+                        <option value="全部">全部</option>
+                        <option value="Windows">Windows</option>
+                        <option value="Linux">Linux</option>
+                        <option value="macOS">macOS</option>
+                        <option value="其他">其他</option>
+                    </select>
+                    <button onclick="checkUpdates()">检查更新</button>
+                </div>
+                <div class="split-panel">
+                    <div>
+                        <div class="section-title"><span>发布版本</span></div>
+                        <div class="list-box" id="releaseList" onclick="selectRelease(event)"></div>
+                    </div>
+                    <div>
+                        <div class="section-title"><span>资产包</span></div>
+                        <div class="list-box" id="assetList" onclick="selectAsset(event)"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="installBtn" onclick="installAsset()" disabled>下载并更新</button>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="updateProgress"></div>
+                </div>
+                <span id="updateStatus" style="font-size:12px; min-width:80px; text-align:right;">就绪</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 方案集选择 -->
+    <div class="modal-overlay" id="configsModal">
+        <div class="modal" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>选择方案集</h2>
+                <button onclick="closeConfigsList()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="font-size: 13px; margin-bottom: 8px;">configs 目录下的备选配置文件：</div>
+                <div class="list-box" id="configsList" onclick="selectConfigFile(event)"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeConfigsList()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // -------------------- 全局状态 --------------------
+        const MAX_LOG_LINES = 500;
+        const SSE_MAX_DELAY = 15000;
+        let releases = [];
+        let currentAssets = [];
+        let selectedReleaseIndex = -1;
+        let selectedAssetIndex = -1;
+        let eventSource = null;
+        let sseReconnectDelay = 1000;
+        let isRunning = false;
+        let statusPollTimer = null;
+        let isProcessing = false;
+        let browserContext = { inputId: '', mode: 'dir', currentPath: '', parent: '' };
+
+        // -------------------- API 工具 --------------------
+        async function apiGet(url) {
+            const resp = await fetch(url);
+            return await resp.json();
+        }
+        async function apiPost(url, data) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            return await resp.json();
+        }
+
+        // -------------------- 配置加载 --------------------
+        async function loadConfig() {
+            const config = await apiGet('/api/config');
+            document.getElementById('llamacppDir').value = config.llamacpp_dir || '';
+            document.getElementById('modelDir').value = config.model_dir || '';
+            document.getElementById('profilesPath').value = config.profiles_path || '';
+            document.getElementById('hostInput').value = config.host || '127.0.0.1';
+            document.getElementById('portInput').value = config.port || 8080;
+
+            const detectLabel = document.getElementById('detectLabel');
+            detectLabel.textContent = config.detect_msg;
+            detectLabel.className = `detect-label ${config.detect_status}`;
+
+            await loadModels();
+            await loadProfiles();
+            selectOption('modelSelect', config.last_model);
+            selectOption('profileSelect', config.current_profile);
+        }
+
+        function selectOption(id, value) {
+            const sel = document.getElementById(id);
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === value) {
+                    sel.selectedIndex = i;
+                    return;
+                }
+            }
+        }
+
+        async function loadModels() {
+            const models = await apiGet('/api/models');
+            const sel = document.getElementById('modelSelect');
+            sel.innerHTML = '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                sel.appendChild(opt);
+            });
+        }
+
+        async function loadProfiles() {
+            const profiles = await apiGet('/api/profiles');
+            const sel = document.getElementById('profileSelect');
+            sel.innerHTML = '';
+            (profiles.names || []).forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n; opt.textContent = n;
+                sel.appendChild(opt);
+            });
+        }
+
+        // -------------------- 目录浏览器 --------------------
+        function openBrowser(inputId, mode) {
+            browserContext = {
+                inputId, mode,
+                currentPath: document.getElementById(inputId).value || '',
+                parent: ''
+            };
+            document.getElementById('browserTitle').textContent = mode === 'dir' ? '选择目录' : '选择文件';
+            document.getElementById('browserConfirmBtn').textContent = mode === 'dir' ? '选择此目录' : '选择此文件';
+            document.getElementById('browserModal').classList.add('show');
+            browserNavigate(browserContext.currentPath);
+        }
+
+        function closeBrowser() {
+            document.getElementById('browserModal').classList.remove('show');
+        }
+
+        async function browserNavigate(path) {
+            const resp = await apiGet('/api/browse?path=' + encodeURIComponent(path || ''));
+            browserContext.currentPath = resp.path || '';
+            browserContext.parent = resp.parent || '';
+            document.getElementById('browserPath').value = resp.path || '(根)';
+            document.getElementById('browserError').textContent = resp.error || '';
+            document.getElementById('browserUpBtn').disabled = !resp.parent;
+
+            const list = document.getElementById('browserList');
+            list.innerHTML = '';
+            (resp.entries || []).forEach(e => {
+                const div = document.createElement('div');
+                const icon = e.type === 'dir' ? '📁 ' : '📄 ';
+                div.textContent = icon + e.name;
+                div.dataset.name = e.name;
+                div.dataset.type = e.type;
+                div.onclick = () => onBrowserItemClick(e, resp);
+                list.appendChild(div);
+            });
+        }
+
+        function onBrowserItemClick(entry, resp) {
+            if (entry.type === 'dir') {
+                const next = resp.path ? joinPath(resp.path, entry.name) : entry.name;
+                browserNavigate(next);
+            } else {
+                document.querySelectorAll('#browserList div').forEach(d => d.classList.remove('selected'));
+                event.currentTarget.classList.add('selected');
+            }
+        }
+
+        function joinPath(base, name) {
+            if (base.endsWith('\\') || base.endsWith('/')) return base + name;
+            return base + '/' + name;
+        }
+
+        function browserGoUp() {
+            if (browserContext.parent !== undefined) browserNavigate(browserContext.parent);
+        }
+
+        function browserRefresh() {
+            browserNavigate(browserContext.currentPath);
+        }
+
+        function browserConfirm() {
+            const { inputId, mode, currentPath } = browserContext;
+            let selected = currentPath;
+            if (mode === 'file') {
+                const sel = document.querySelector('#browserList div.selected');
+                if (!sel) { alert('请先选择文件'); return; }
+                selected = currentPath ? joinPath(currentPath, sel.dataset.name) : sel.dataset.name;
+            } else {
+                if (!selected) { alert('请先进入一个目录'); return; }
+            }
+            document.getElementById(inputId).value = selected;
+            closeBrowser();
+            if (inputId === 'llamacppDir' || inputId === 'modelDir') onPathChanged();
+            else if (inputId === 'profilesPath') onProfilesPathChanged(selected);
+        }
+
+        // -------------------- 路径变更 --------------------
+        async function onPathChanged() {
+            const config = {
+                llamacpp_dir: document.getElementById('llamacppDir').value,
+                model_dir: document.getElementById('modelDir').value,
+            };
+            const result = await apiPost('/api/config', config);
+            const detectLabel = document.getElementById('detectLabel');
+            detectLabel.textContent = result.detect_msg;
+            detectLabel.className = `detect-label ${result.detect_status}`;
+            await loadModels();
+        }
+
+        async function onProfilesPathChanged(path) {
+            await apiPost('/api/profiles/path', { path });
+            await loadProfiles();
+        }
+
+        async function showConfigsList() {
+            const files = await apiGet('/api/configs/list');
+            const list = document.getElementById('configsList');
+            list.innerHTML = '';
+            if (!files.length) {
+                list.innerHTML = '<div class="text-center">configs 目录下暂无配置文件</div>';
+            } else {
+                files.forEach(f => {
+                    const div = document.createElement('div');
+                    div.textContent = f;
+                    div.dataset.filename = f;
+                    list.appendChild(div);
+                });
+            }
+            document.getElementById('configsModal').classList.add('show');
+        }
+
+        function closeConfigsList() {
+            document.getElementById('configsModal').classList.remove('show');
+        }
+
+        async function selectConfigFile(event) {
+            const target = event.target;
+            if (!target.dataset.filename) return;
+            await apiPost('/api/configs/load/' + target.dataset.filename);
+            await loadProfiles();
+            await loadConfig();
+            closeConfigsList();
+        }
+
+        // -------------------- 服务控制（启停合一）--------------------
+        async function toggleServer() {
+            if (isProcessing) return;
+            isProcessing = true;
+            try {
+                if (isRunning) await stopServer();
+                else await startServer();
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        async function startServer() {
+            const model = document.getElementById('modelSelect').value;
+            const profile = document.getElementById('profileSelect').value;
+            const host = document.getElementById('hostInput').value;
+            const port = document.getElementById('portInput').value;
+            if (!model) { alert('请选择模型'); return; }
+            if (!profile) { alert('请选择参数方案'); return; }
+
+            const result = await apiPost('/api/start', { model, profile, host, port });
+            if (result.error) { alert(result.error); return; }
+            if (result.command) addLog(result.command, 'cmd');
+            updateStatus(true);
+            startLogStream();
+            startStatusPoll();
+        }
+
+        async function stopServer() {
+            const result = await apiPost('/api/stop', { force: true });
+            if (result.error) { alert(result.error); return; }
+            addLog('[已强制停止]', 'rc');
+            updateStatus(result.running);
+            if (!result.running) stopStatusPoll();
+        }
+
+        function updateStatus(running) {
+            isRunning = running;
+            const statusLabel = document.getElementById('statusLabel');
+            const toggleBtn = document.getElementById('toggleBtn');
+            if (running) {
+                statusLabel.textContent = '运行中';
+                statusLabel.className = 'status running';
+                toggleBtn.textContent = '■ 停止';
+                toggleBtn.className = 'header-btn stop';
+            } else {
+                statusLabel.textContent = '未运行';
+                statusLabel.className = 'status stopped';
+                toggleBtn.textContent = '▶ 启动';
+                toggleBtn.className = 'header-btn start';
+            }
+        }
+
+        // -------------------- 状态轮询（仅运行时）--------------------
+        function startStatusPoll() {
+            if (statusPollTimer) clearInterval(statusPollTimer);
+            statusPollTimer = setInterval(async () => {
+                try {
+                    const status = await apiGet('/api/status');
+                    if (status.running !== isRunning) {
+                        updateStatus(status.running);
+                        if (!status.running) stopStatusPoll();
+                    }
+                } catch (e) { /* 轮询失败忽略，下次重试 */ }
+            }, 3000);
+        }
+
+        function stopStatusPoll() {
+            if (statusPollTimer) {
+                clearInterval(statusPollTimer);
+                statusPollTimer = null;
+            }
+        }
+
+        // -------------------- 日志流（SSE + 指数退避重连）--------------------
+        function startLogStream() {
+            if (eventSource) eventSource.close();
+            eventSource = new EventSource('/api/logs');
+            eventSource.onopen = () => { sseReconnectDelay = 1000; };
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.kind === 'rc') {
+                    addLog(`[退出 ${data.data}]`, 'rc');
+                    updateStatus(false);
+                } else {
+                    addLog(data.data, data.kind);
+                }
+            };
+            eventSource.onerror = function() {
+                eventSource.close();
+                // 仅在服务仍运行时重连
+                if (isRunning) {
+                    setTimeout(() => {
+                        sseReconnectDelay = Math.min(sseReconnectDelay * 2, SSE_MAX_DELAY);
+                        startLogStream();
+                    }, sseReconnectDelay);
+                }
+            };
+        }
+
+        // 日志面板：500 行硬上限，超出裁剪最旧的
+        function addLog(text, kind) {
+            const panel = document.getElementById('logPanel');
+            const line = document.createElement('div');
+            line.className = `log-line ${kind}`;
+            line.textContent = text;
+            panel.appendChild(line);
+            while (panel.childElementCount > MAX_LOG_LINES) {
+                panel.removeChild(panel.firstChild);
+            }
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logPanel').innerHTML = '';
+        }
+
+        // -------------------- 版本管理 --------------------
+        async function openVersionManager() {
+            document.getElementById('versionModal').classList.add('show');
+            await refreshCurrent();
+            // 先识别本机平台并设置筛选器，再拉取发布列表
+            const platform = await apiGet('/api/platform');
+            document.getElementById('osFilter').value = platform.os || '全部';
+            await checkUpdates();
+        }
+
+        function closeVersionManager() {
+            document.getElementById('versionModal').classList.remove('show');
+        }
+
+        async function refreshCurrent() {
+            const config = await apiGet('/api/config');
+            document.getElementById('currentDirLabel').textContent =
+                `当前目录：${config.llamacpp_dir || '（未设置）'}  —  ${config.detect_msg}`;
+        }
+
+        async function checkUpdates() {
+            const status = document.getElementById('updateStatus');
+            status.textContent = '正在从 GitHub 获取发布列表…';
+            document.getElementById('installBtn').disabled = true;
+            try {
+                // 始终拉取全部发布（os=全部），前端按 os_group 本地筛选，
+                // 切换平台筛选无需重复请求 GitHub API（避免触发频率限制）
+                const result = await apiGet('/api/releases?os=全部');
+                if (result.error) throw new Error(result.error);
+                releases = Array.isArray(result) ? result : [];
+                const list = document.getElementById('releaseList');
+                list.innerHTML = '';
+                if (!releases.length) {
+                    list.innerHTML = '<div class="text-center">未获取到版本</div>';
+                    status.textContent = '未获取到版本';
+                    return;
+                }
+                releases.forEach((r, i) => {
+                    const div = document.createElement('div');
+                    div.textContent = `${r.tag}  (${r.published})`;
+                    div.dataset.index = i;
+                    list.appendChild(div);
+                });
+                list.firstChild.classList.add('selected');
+                selectedReleaseIndex = 0;
+                await refreshAssets();
+                status.textContent = `共 ${releases.length} 个版本`;
+            } catch (e) {
+                status.textContent = '获取失败';
+                alert('获取失败：' + e);
+            }
+        }
+
+        async function refreshAssets() {
+            const list = document.getElementById('assetList');
+            list.innerHTML = '';
+            currentAssets = [];
+            selectedAssetIndex = -1;
+            document.getElementById('installBtn').disabled = true;
+            if (selectedReleaseIndex < 0 || !releases[selectedReleaseIndex]) return;
+
+            // 前端按当前平台筛选器本地过滤 os_group（避免重复请求 GitHub API）
+            const osFilter = document.getElementById('osFilter').value;
+            const groupMap = {"Windows": "windows", "Linux": "linux",
+                              "macOS": "macos", "其他": "others"};
+            const targetGroup = osFilter === '全部' ? '' : (groupMap[osFilter] || '');
+
+            const release = releases[selectedReleaseIndex];
+            for (const a of release.assets) {
+                if (targetGroup && a.os_group !== targetGroup) continue;
+                const div = document.createElement('div');
+                div.textContent = `${a.name}  [${a.variant}]  ${(a.size / 1024).toFixed(0)}KB`;
+                div.dataset.index = currentAssets.length;
+                currentAssets.push(a);
+                list.appendChild(div);
+            }
+            if (currentAssets.length > 0) {
+                list.firstChild.classList.add('selected');
+                selectedAssetIndex = 0;
+                document.getElementById('installBtn').disabled = false;
+            } else {
+                const empty = document.createElement('div');
+                empty.className = 'text-center';
+                empty.textContent = osFilter === '全部' ? '无资产' : `该版本无 ${osFilter} 资产`;
+                list.appendChild(empty);
+            }
+        }
+
+        function selectRelease(event) {
+            const target = event.target;
+            if (!target.dataset.index) return;
+            selectedReleaseIndex = parseInt(target.dataset.index);
+            document.querySelectorAll('#releaseList div').forEach(d => d.classList.remove('selected'));
+            target.classList.add('selected');
+            refreshAssets();
+        }
+
+        function selectAsset(event) {
+            const target = event.target;
+            if (!target.dataset.index) return;
+            selectedAssetIndex = parseInt(target.dataset.index);
+            document.querySelectorAll('#assetList div').forEach(d => d.classList.remove('selected'));
+            target.classList.add('selected');
+            document.getElementById('installBtn').disabled = false;
+        }
+
+        async function installAsset() {
+            if (selectedAssetIndex < 0 || !currentAssets[selectedAssetIndex]) return;
+            const asset = currentAssets[selectedAssetIndex];
+            const config = await apiGet('/api/config');
+            if (!config.llamacpp_dir) { alert('未设置 llama.cpp 目录'); return; }
+
+            const installBtn = document.getElementById('installBtn');
+            const progressFill = document.getElementById('updateProgress');
+            const status = document.getElementById('updateStatus');
+            installBtn.disabled = true;
+            progressFill.style.width = '0%';
+            status.textContent = '正在下载…';
+
+            const result = await apiPost('/api/update', { url: asset.url, filename: asset.name });
+            if (result.error) {
+                alert(result.error);
+                installBtn.disabled = false;
+                status.textContent = '就绪';
+                return;
+            }
+
+            const updateId = result.update_id;
+            const checkProgress = async () => {
+                const progress = await apiGet('/api/update/progress/' + updateId);
+                if (progress.status === 'not_found') {
+                    status.textContent = '更新任务未找到';
+                    installBtn.disabled = false;
+                    return;
+                }
+                progressFill.style.width = progress.progress + '%';
+                if (progress.message) status.textContent = progress.message;
+                if (progress.status === 'done') {
+                    if (progress.success) {
+                        progressFill.style.width = '100%';
+                        status.textContent = '更新完成';
+                        alert('更新完成');
+                        await refreshCurrent();
+                    } else {
+                        alert('更新失败：' + progress.message);
+                        status.textContent = '更新失败';
+                    }
+                    installBtn.disabled = false;
+                    return;
+                }
+                setTimeout(checkProgress, 500);
+            };
+            checkProgress();
+        }
+
+        // -------------------- 初始化 --------------------
+        document.getElementById('llamacppDir').addEventListener('change', onPathChanged);
+        document.getElementById('modelDir').addEventListener('change', onPathChanged);
+
+        loadConfig();
+        apiGet('/api/status').then(s => {
+            updateStatus(s.running);
+            if (s.running) {
+                startLogStream();
+                startStatusPoll();
+            }
+        });
+    </script>
+</body>
+</html>
