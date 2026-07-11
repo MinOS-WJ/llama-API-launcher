@@ -1,9 +1,0 @@
-{
-  "llamacpp_dir": "C:/lamma-cpu",
-  "model_dir": "C:/lamma-cpu/mods",
-  "profiles_path": "C:\\Users\\13871\\Desktop\\llama-API-launcher\\configs\\default.json",
-  "last_model": "causallm_14b-dpo-alpha.Q4_K_M.gguf",
-  "current_profile": "cpu",
-  "host": "127.0.0.1",
-  "port": 8080
-}
