@@ -1,0 +1,10 @@
+# llama.cpp API 启动器 —— Python 依赖
+# 安装：pip install -r requirements.txt
+#
+# 仅引入两个顶层第三方库：
+#   fastapi —— Web 框架（路由、依赖、中间件、SSE）
+#   uvicorn —— ASGI 服务器，用于运行 FastAPI 应用
+# 不使用 uvicorn[standard]（会拉入 uvloop/httptools/websockets/watchfiles，本场景无需）。
+# 不使用 sse-starlette（Starlette 自带 StreamingResponse 即可手写 SSE）。
+fastapi>=0.110,<1.0
+uvicorn>=0.27,<1.0

@@ -1,0 +1,25 @@
+# Python 字节码与缓存
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 运行时自动生成的配置（含本机路径，不应纳入版本控制）
+llama_launcher_config.json
+
+# API Key 管理数据（含哈希，首次创建 key 时生成）
+configs/api_keys.json
+
+# 版本更新时备份的旧二进制
+_backup/
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

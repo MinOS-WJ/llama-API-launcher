@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>llama.cpp API 启动器</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+    <!-- 侧边栏 -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">llama.cpp 启动器</div>
+        <nav class="sidebar-nav">
+            <div class="menu-item active" data-menu="dashboard">
+                <span class="menu-icon">▣</span> 仪表盘
+            </div>
+            <div class="menu-item" data-menu="paths">
+                <span class="menu-icon">📁</span> 路径配置
+            </div>
+            <div class="menu-item" data-menu="profiles">
+                <span class="menu-icon">⚙</span> 参数方案
+            </div>
+            <div class="menu-item" data-menu="workbench">
+                <span class="menu-icon">🔧</span> API 工作台
+            </div>
+            <div class="menu-item" data-menu="security">
+                <span class="menu-icon">🔒</span> 安全设置
+            </div>
+            <div class="menu-item" data-menu="version">
+                <span class="menu-icon">⬇</span> 版本管理
+            </div>
+            <div class="menu-item" data-menu="logs">
+                <span class="menu-icon">📋</span> 实时日志
+            </div>
+        </nav>
+        <div class="sidebar-footer">v1.0 · 管理员已登录</div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- 主区域 -->
+    <div class="main-area">
+        <!-- 顶栏 -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+                <h1>llama.cpp API 启动器</h1>
+                <span class="status stopped" id="statusLabel">未运行</span>
+                <button class="api-badge" id="apiBadge" disabled title="点击复制 API 地址" onclick="App.copyApiBase()">API: -</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="topbar-btn start" id="toggleBtn" onclick="App.toggleServer()">▶ 启动</button>
+                <button class="logout-btn" id="logoutBtn">退出登录</button>
+            </div>
+        </header>
+
+        <!-- 内容区 -->
+        <main class="content">
+
+            <!-- ==================== 仪表盘 ==================== -->
+            <div class="panel active" id="panel-dashboard">
+                <div class="panel-title">运行控制</div>
+
+                <div class="section">
+                    <div class="section-title"><span>运行配置</span></div>
+                    <div class="form-row">
+                        <label>模型：</label>
+                        <select id="modelSelect"></select>
+                        <label>方案：</label>
+                        <select id="profileSelect"></select>
+                    </div>
+                    <div class="form-row">
+                        <label>监听地址：</label>
+                        <input type="text" id="hostInput" value="127.0.0.1" style="flex:0 0 160px;">
+                        <label style="width:50px;">端口：</label>
+                        <input type="text" id="portInput" value="8080" style="flex:0 0 80px;">
+                    </div>
+                    <div class="form-row">
+                        <button class="btn-secondary" onclick="App.runHealthcheck()">启动前检查</button>
+                        <span id="hcSummary" class="info-line"></span>
+                    </div>
+                    <div id="hcBox" class="hc-box" style="display:none;"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">
+                        <span>API 端点信息</span>
+                        <button class="clear-btn" onclick="App.loadEndpoints()">刷新</button>
+                    </div>
+                    <div class="info-line" id="endpointsInfo">未运行</div>
+                    <div class="info-line" id="apiModelLabel"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title"><span>快速操作</span></div>
+                    <div class="form-row">
+                        <button class="btn-secondary" onclick="App.switchMenu('paths')">配置路径</button>
+                        <button class="btn-secondary" onclick="App.switchMenu('profiles')">编辑参数方案</button>
+                        <button class="btn-secondary" onclick="App.switchMenu('version')">版本管理</button>
+                        <button class="btn-secondary" onclick="App.switchMenu('logs')">查看日志</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 路径配置 ==================== -->
+            <div class="panel" id="panel-paths">
+                <div class="panel-title">路径配置</div>
+                <div class="warn-box" id="remoteWarn" style="display:none;">⚠ 检测到远程访问模式（host=0.0.0.0）。建议设置管理员密码，否则任何能访问该端口的人均可操作。</div>
+
+                <div class="section">
+                    <div class="section-title"><span>llama.cpp 路径</span></div>
+                    <div class="form-row">
+                        <label>llama.cpp：</label>
+                        <input type="text" id="llamacppDir" placeholder="选择 llama.cpp 目录">
+                        <button onclick="App.pickPath('llamacppDir','dir')">浏览…</button>
+                        <span class="detect-label bad" id="detectLabel">✗ 未设置</span>
+                    </div>
+                    <div class="form-row">
+                        <label>模型目录：</label>
+                        <input type="text" id="modelDir" placeholder="选择模型目录">
+                        <button onclick="App.pickPath('modelDir','dir')">浏览…</button>
+                    </div>
+                    <div class="info-line">点击「浏览…」调用系统原生文件选择器。远程无头服务器无显示器时需手动输入路径。</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title"><span>参数方案文件</span></div>
+                    <div class="form-row">
+                        <label>方案文件：</label>
+                        <input type="text" id="profilesPath" readonly placeholder="选择方案文件">
+                        <button onclick="App.pickPath('profilesPath','file','json')">选择…</button>
+                        <button class="btn-secondary" onclick="App.showConfigsList()">方案集</button>
+                    </div>
+                    <div class="info-line">方案文件存储在 <code>configs/</code> 目录下，可在「参数方案」面板编辑具体参数。</div>
+                </div>
+            </div>
+
+            <!-- ==================== 参数方案 ==================== -->
+            <div class="panel" id="panel-profiles">
+                <div class="panel-title">
+                    <span>参数方案编辑器</span>
+                    <span style="display:flex; gap:6px;">
+                        <button class="btn-secondary" onclick="App.newProfile()">新建</button>
+                        <button class="btn-primary" onclick="App.saveProfileFromForm()">保存</button>
+                        <button class="btn-danger" id="deleteProfileBtn" onclick="App.deleteProfileFromUI()" disabled>删除</button>
+                    </span>
+                </div>
+
+                <div class="split-panel">
+                    <!-- 左侧：方案列表 -->
+                    <div style="flex:0 0 200px;">
+                        <div class="section-title"><span>已保存方案</span></div>
+                        <div class="list-box" id="profileEditList" style="height:400px;" onclick="App.onProfileListClick(event)"></div>
+                    </div>
+                    <!-- 右侧：编辑表单 -->
+                    <div style="flex:1;">
+                        <div class="form-row">
+                            <label>方案名：</label>
+                            <input type="text" id="editProfileName" placeholder="如 cpu / gpu / my-gpu">
+                            <button class="btn-secondary" onclick="App.loadProfileForEdit()">载入</button>
+                        </div>
+
+                        <div class="section-title" style="margin-top:8px;"><span>整型参数（0 或空=省略）</span></div>
+                        <div class="check-grid" style="grid-template-columns:repeat(3,1fr);">
+                            <label>context_size<input type="number" id="f_context_size" value="0"></label>
+                            <label>parallel<input type="number" id="f_parallel" value="1"></label>
+                            <label>batch_size<input type="number" id="f_batch_size" value="512"></label>
+                            <label>ubatch_size<input type="number" id="f_ubatch_size" value="512"></label>
+                            <label>gpu_layers<input type="number" id="f_gpu_layers" value="0" title="-1=全部卸载"></label>
+                            <label>threads<input type="number" id="f_threads" value="0"></label>
+                        </div>
+
+                        <div class="section-title"><span>布尔选项</span></div>
+                        <div class="check-grid">
+                            <label><input type="checkbox" id="f_flash_attn"> flash_attn</label>
+                            <label><input type="checkbox" id="f_cont_batching"> cont_batching</label>
+                            <label><input type="checkbox" id="f_mlock"> mlock</label>
+                            <label><input type="checkbox" id="f_no_mmap"> no_mmap</label>
+                            <label><input type="checkbox" id="f_embedding"> embedding</label>
+                            <label><input type="checkbox" id="f_reranking"> reranking</label>
+                            <label><input type="checkbox" id="f_jinja"> jinja</label>
+                            <label><input type="checkbox" id="f_verbose"> verbose</label>
+                        </div>
+
+                        <div class="section-title"><span>高级字段</span></div>
+                        <div class="form-row"><label>pooling：</label><input type="text" id="f_pooling" placeholder="如 mean"></div>
+                        <div class="form-row"><label>chat_template：</label><input type="text" id="f_chat_template" placeholder="如 chatml"></div>
+                        <div class="form-row">
+                            <label>draft_model：</label>
+                            <input type="text" id="f_draft_model" placeholder="草稿模型路径">
+                            <button class="btn-secondary small-btn" onclick="App.pickDraftModel()">浏览…</button>
+                        </div>
+                        <div class="form-row">
+                            <label>grammar_file：</label>
+                            <input type="text" id="f_grammar_file" placeholder="GBNF 语法文件">
+                            <button class="btn-secondary small-btn" onclick="App.pickGrammarFile()">浏览…</button>
+                        </div>
+                        <div class="form-row"><label>extra_args：</label><input type="text" id="f_extra_args" placeholder="额外命令行参数"></div>
+                        <div id="profileWarnings" class="hc-box" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== API 工作台 ==================== -->
+            <div class="panel" id="panel-workbench">
+                <div class="panel-title">API 工作台</div>
+
+                <div class="section">
+                    <div class="form-row">
+                        <label>API Key：</label>
+                        <input type="password" id="v1ApiKey" placeholder="sk-..." style="flex:1;">
+                        <button class="btn-secondary small-btn" onclick="App.fillV1KeyFromList()">填入…</button>
+                    </div>
+                    <div class="info-line">/v1/* 调用需携带 <code>sk-</code> 开头的 API Key。可在「安全设置」面板创建。</div>
+                </div>
+
+                <div class="section">
+                    <div class="tabs">
+                        <div class="tab active" data-tab="chat" onclick="App.switchTab('chat')">Chat</div>
+                        <div class="tab" data-tab="embeddings" onclick="App.switchTab('embeddings')">Embeddings</div>
+                        <div class="tab" data-tab="rerank" onclick="App.switchTab('rerank')">Reranking</div>
+                        <div class="tab" data-tab="models" onclick="App.switchTab('models')">模型</div>
+                        <div class="tab" data-tab="examples" onclick="App.switchTab('examples')">调用示例</div>
+                        <div class="tab" data-tab="prompts" onclick="App.switchTab('prompts')">Prompt 模板</div>
+                    </div>
+
+                    <!-- Chat -->
+                    <div class="tab-pane active" id="pane-chat">
+                        <div class="chat-window" id="chatWindow"></div>
+                        <div class="form-row" style="margin-top:6px;">
+                            <label>系统提示：</label>
+                            <input type="text" id="chatSystem" placeholder="（可选）你是一个有用的助手">
+                        </div>
+                        <div class="form-row">
+                            <label>输入：</label>
+                            <input type="text" id="chatInput" placeholder="输入消息后回车发送" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();App.sendChat();}">
+                            <button onclick="App.sendChat()">发送</button>
+                            <button class="btn-secondary" onclick="App.clearChat()">清空</button>
+                        </div>
+                        <div class="form-row">
+                            <label>temperature：</label>
+                            <input type="number" id="chatTemp" value="0.7" min="0" max="2" step="0.1" style="flex:0 0 80px;">
+                            <label>max_tokens：</label>
+                            <input type="number" id="chatMaxTokens" value="-1" min="-1" step="1" style="flex:0 0 80px;" title="-1 表示自动">
+                            <label>stream：</label>
+                            <select id="chatStream" style="flex:0 0 auto;"><option value="false">否</option><option value="true">是</option></select>
+                        </div>
+                    </div>
+
+                    <!-- Embeddings -->
+                    <div class="tab-pane" id="pane-embeddings">
+                        <div class="form-row">
+                            <label>输入文本：</label>
+                            <textarea id="embInput" placeholder="一行一个文本，或多行用换行分隔"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <button onclick="App.sendEmbeddings()">生成向量</button>
+                            <button class="btn-secondary" onclick="document.getElementById('embOutput').textContent=''">清空结果</button>
+                        </div>
+                        <div class="json-out" id="embOutput">（结果将显示于此）</div>
+                    </div>
+
+                    <!-- Reranking -->
+                    <div class="tab-pane" id="pane-rerank">
+                        <div class="form-row">
+                            <label>查询：</label>
+                            <input type="text" id="rerankQuery" placeholder="查询文本">
+                        </div>
+                        <div class="form-row">
+                            <label>候选文档：</label>
+                            <textarea id="rerankDocs" placeholder="一行一个候选文档"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <label>top_n：</label>
+                            <input type="number" id="rerankTopN" value="3" min="1" style="flex:0 0 80px;">
+                            <button onclick="App.sendRerank()">重排序</button>
+                            <button class="btn-secondary" onclick="document.getElementById('rerankOutput').textContent=''">清空结果</button>
+                        </div>
+                        <div class="json-out" id="rerankOutput">（结果将显示于此）</div>
+                    </div>
+
+                    <!-- 模型列表 -->
+                    <div class="tab-pane" id="pane-models">
+                        <div class="form-row">
+                            <button onclick="App.loadProxyModels()">获取已加载模型</button>
+                            <button class="btn-secondary" onclick="App.probeHealth()">探活 /health</button>
+                            <span id="healthProbe" class="info-line"></span>
+                        </div>
+                        <div class="json-out" id="modelsOutput">（点击上方按钮查询）</div>
+                    </div>
+
+                    <!-- 调用示例 -->
+                    <div class="tab-pane" id="pane-examples">
+                        <div class="form-row">
+                            <button onclick="App.loadExamples()">生成示例代码</button>
+                            <select id="exampleLang" onchange="App.showExample()" style="flex:0 0 auto;">
+                                <option value="python">Python</option>
+                                <option value="javascript">JavaScript</option>
+                                <option value="curl">cURL</option>
+                            </select>
+                            <button class="copy-btn" onclick="App.copyExample()">复制</button>
+                        </div>
+                        <pre class="code-block" id="exampleCode">（点击"生成示例代码"）</pre>
+                    </div>
+
+                    <!-- Prompt 模板 -->
+                    <div class="tab-pane" id="pane-prompts">
+                        <div class="form-row">
+                            <button onclick="App.loadPrompts()">刷新列表</button>
+                            <button class="btn-secondary" onclick="App.openPromptEditor()">新建模板</button>
+                        </div>
+                        <div class="split-panel">
+                            <div>
+                                <div class="section-title"><span>已保存模板</span></div>
+                                <div class="list-box" id="promptList" onclick="App.selectPrompt(event)" style="height:220px;"></div>
+                            </div>
+                            <div>
+                                <div class="section-title"><span>详情</span></div>
+                                <div class="form-row">
+                                    <label>名称：</label>
+                                    <input type="text" id="promptName" placeholder="模板名称">
+                                </div>
+                                <div class="form-row">
+                                    <label>分类：</label>
+                                    <input type="text" id="promptCategory" placeholder="通用" value="通用">
+                                </div>
+                                <div class="form-row">
+                                    <label>内容：</label>
+                                    <textarea id="promptContent" placeholder="prompt 内容…" style="min-height:120px;"></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <button onclick="App.savePrompt()">保存</button>
+                                    <button class="btn-secondary" onclick="App.applyPromptToChat()">应用到 Chat</button>
+                                    <button class="btn-danger" onclick="App.deletePrompt()">删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 安全设置 ==================== -->
+            <div class="panel" id="panel-security">
+                <div class="panel-title">安全设置</div>
+
+                <!-- 管理员密码管理 -->
+                <div class="section">
+                    <div class="section-title">
+                        <span>管理员密码</span>
+                        <span id="authState" class="info-line"></span>
+                    </div>
+                    <div class="info-line">管理员密码用于远程登录管理面板。修改密码后所有已登录会话将立即失效。</div>
+                    <div class="form-row">
+                        <label>旧密码：</label>
+                        <input type="password" id="changeOldPassword" placeholder="当前密码">
+                    </div>
+                    <div class="form-row">
+                        <label>新密码：</label>
+                        <input type="password" id="changeNewPassword" placeholder="至少 6 位">
+                    </div>
+                    <div class="form-row">
+                        <label>确认新密码：</label>
+                        <input type="password" id="changeConfirmPassword" placeholder="再次输入新密码">
+                    </div>
+                    <div class="login-error" id="changePwdError"></div>
+                    <div class="hc-box hc-ok" id="changePwdOk" style="display:none;"></div>
+                    <div class="form-row">
+                        <button class="btn-primary" id="changePwdBtn" onclick="App.doChangePassword()">修改密码</button>
+                    </div>
+                </div>
+
+                <!-- API Key 管理 -->
+                <div class="section">
+                    <div class="section-title">
+                        <span>API Key 管理</span>
+                        <span>
+                            <button class="btn-primary" onclick="App.showCreateKeyDialog()">+ 新建 Key</button>
+                            <button class="btn-secondary" onclick="App.loadKeys()">刷新</button>
+                        </span>
+                    </div>
+                    <div class="info-line">多 Key 体系：可生成、命名、启停、回收。明文仅创建时显示一次。<code>/v1/*</code> API 及远程访问均需携带 <code>Authorization: Bearer sk-...</code>。</div>
+                    <table class="keys-table">
+                        <thead><tr>
+                            <th>标签</th><th>前缀</th><th>作用域</th><th>状态</th>
+                            <th>创建时间</th><th>最近使用</th><th>操作</th>
+                        </tr></thead>
+                        <tbody id="keysBody">
+                            <tr><td colspan="7" class="text-center">暂无 API Key</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ==================== 版本管理 ==================== -->
+            <div class="panel" id="panel-version">
+                <div class="panel-title">llama.cpp 版本管理</div>
+                <div class="section">
+                    <div class="form-row">
+                        <span id="currentDirLabel" style="font-weight:600; flex:1;">当前：未识别</span>
+                        <button class="btn-secondary" onclick="App.refreshCurrent()">刷新当前</button>
+                        <label style="width:auto;">平台：</label>
+                        <select id="osFilter" style="width:auto;" onchange="App.refreshAssets()">
+                            <option value="全部">全部</option>
+                            <option value="Windows">Windows</option>
+                            <option value="Linux">Linux</option>
+                            <option value="macOS">macOS</option>
+                            <option value="其他">其他</option>
+                        </select>
+                        <button onclick="App.checkUpdates()">检查更新</button>
+                    </div>
+                    <div class="split-panel">
+                        <div>
+                            <div class="section-title"><span>发布版本</span></div>
+                            <div class="list-box" id="releaseList" style="height:240px;" onclick="App.selectRelease(event)"></div>
+                        </div>
+                        <div>
+                            <div class="section-title"><span>资产包</span></div>
+                            <div class="list-box" id="assetList" style="height:240px;" onclick="App.selectAsset(event)"></div>
+                        </div>
+                    </div>
+                    <div id="backupInfo" class="info-line" style="margin-top:8px;"></div>
+                </div>
+                <div class="section">
+                    <div class="form-row" style="justify-content:space-between;">
+                        <button class="btn-danger" id="rollbackBtn" onclick="App.rollbackVersion()" disabled>回滚到上个版本</button>
+                        <button class="btn-primary" id="installBtn" onclick="App.installAsset()" disabled>下载并更新</button>
+                    </div>
+                    <div class="form-row">
+                        <div class="progress-bar" style="flex:1; min-width:100px; height:18px; background:var(--input); border:1px solid var(--border);">
+                            <div class="progress-fill" id="updateProgress" style="height:100%; background:var(--accent); width:0%; transition:width .2s;"></div>
+                        </div>
+                        <span id="updateStatus" style="font-size:12px; min-width:80px; text-align:right;">就绪</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 实时日志 ==================== -->
+            <div class="panel" id="panel-logs">
+                <div class="panel-title">
+                    <span>实时日志</span>
+                    <div class="log-toolbar">
+                        <label>过滤：</label>
+                        <select id="logFilter" onchange="App.applyLogFilter()">
+                            <option value="all">全部</option>
+                            <option value="out">输出</option>
+                            <option value="err">错误</option>
+                            <option value="cmd">命令</option>
+                            <option value="rc">退出码</option>
+                        </select>
+                        <label><input type="checkbox" id="autoscroll" checked> 自动滚动</label>
+                        <button class="clear-btn" onclick="App.downloadLogs()">下载</button>
+                        <button class="clear-btn" onclick="App.clearLogs()">清空</button>
+                    </div>
+                </div>
+                <div class="log-panel" id="logPanel" style="height:500px;"></div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- ==================== 弹窗：方案集选择 ==================== -->
+<div class="modal-overlay" id="configsModal">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <h2>选择方案集</h2>
+            <button onclick="App.closeConfigsList()">×</button>
+        </div>
+        <div class="modal-body">
+            <div style="font-size:13px; margin-bottom:8px;">configs 目录下的备选配置文件：</div>
+            <div class="list-box" id="configsList" style="height:260px;" onclick="App.selectConfigFile(event)"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="App.closeConfigsList()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 弹窗：新建 API Key ==================== -->
+<div class="modal-overlay" id="keyModal">
+    <div class="modal" style="max-width:520px;">
+        <div class="modal-header">
+            <h2 id="keyModalTitle">新建 API Key</h2>
+            <button onclick="App.closeKeyModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="keyFormView">
+                <div class="form-row">
+                    <label>标签：</label>
+                    <input type="text" id="newKeyLabel" placeholder="如 开发机 / 同事小王（必填）">
+                </div>
+                <div class="form-row">
+                    <label>作用域：</label>
+                    <select id="newKeyScope" style="flex:0 0 auto; min-width:120px;">
+                        <option value="admin">admin（全部受保护接口）</option>
+                        <option value="proxy">proxy（仅推理代理 /v1/*）</option>
+                    </select>
+                </div>
+                <div class="info-line">⚠ 明文 Key 仅在创建后显示一次，请立即保存。作用域决定该 Key 可访问的接口范围。</div>
+            </div>
+            <div id="keyPlaintextView" style="display:none;">
+                <div class="warn-box">⚠ 此 Key 仅显示一次，关闭后无法再次查看。请立即复制并妥善保存。</div>
+                <div class="info-line">完整 Key：</div>
+                <div class="key-plaintext" id="newKeyPlaintext"></div>
+                <div class="form-row" style="margin-top:8px;">
+                    <button class="btn-secondary" onclick="App.copyNewKey()">复制完整 Key</button>
+                    <span id="newKeyMeta" class="info-line" style="flex:0 0 auto;"></span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="App.closeKeyModal()">取消</button>
+            <button class="btn-primary" id="keyModalConfirm" onclick="App.createKeyFromForm()">创建</button>
+            <button class="btn-primary" id="keyModalDone" style="display:none;" onclick="App.closeKeyModal()">我已保存，关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 弹窗：重命名 API Key ==================== -->
+<div class="modal-overlay" id="keyRenameModal">
+    <div class="modal" style="max-width:380px;">
+        <div class="modal-header">
+            <h2>重命名 Key</h2>
+            <button onclick="App.closeKeyRenameModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <label>新标签：</label>
+                <input type="text" id="renameKeyLabel" placeholder="新标签名">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="App.closeKeyRenameModal()">取消</button>
+            <button class="btn-primary" onclick="App.confirmRenameKey()">确认</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== JS 模块（按依赖顺序加载）==================== -->
+<script src="/js/api.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/config.js"></script>
+<script src="/js/profiles.js"></script>
+<script src="/js/workbench.js"></script>
+<script src="/js/security.js"></script>
+<script src="/js/version.js"></script>
+<script>
+    // 主控台初始化
+    App.initConsole();
+</script>
+</body>
+</html>
