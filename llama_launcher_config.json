@@ -8,5 +8,5 @@
   "port": 8080,
   "auth_token": "",
   "allowed_origins": [],
-  "admin_password_hash": "pbkdf2_sha256$200000$80kS3aFpJbrmk/mBZuGfOw==$SBgRC2JTelARGC3Oz7bAfSmD0VLqbZeQbxHWifY6xsY="
+  "admin_password_hash": ""
 }
