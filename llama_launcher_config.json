@@ -7,6 +7,10 @@
   "host": "127.0.0.1",
   "port": 8080,
   "auth_token": "",
+<<<<<<< HEAD
   "allowed_origins": [],
   "admin_password_hash": "pbkdf2_sha256$200000$80kS3aFpJbrmk/mBZuGfOw==$SBgRC2JTelARGC3Oz7bAfSmD0VLqbZeQbxHWifY6xsY="
+=======
+  "allowed_origins": []
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 }

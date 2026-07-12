@@ -11,11 +11,18 @@
   （匹配前端契约）；``/v1/*`` 用 OpenAI 对象格式 ``{"error":{"message","type","param","code"}}``。
 - ``/v1/*`` 是 OpenAI 兼容反向代理：透明转发到 llama-server，始终要求 sk- API Key
   （含本机访问），支持 SSE 流式（``http.client`` + ``read1``）。
+<<<<<<< HEAD
 - 安全：``/api/*`` 管理端点本机与远程均需凭证（密码设置后须登录）；``/v1/*`` 始终需 sk- Key；CORS 默认同源。
 """
 
 import asyncio
 import hmac
+=======
+- 安全：``/api/*`` 管理端点本机免认证、远程需凭证；``/v1/*`` 始终需 sk- Key；CORS 默认同源。
+"""
+
+import asyncio
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 import json
 import os
 import tempfile
@@ -36,10 +43,15 @@ from core.paths import (browse_directory, check_port_bindable, detect_llamacpp,
 from core.profiles import (ProfileManager, list_config_files, load_json,
                            normalize_profile, save_json, validate_profile)
 from core.launcher import ServerRunner, build_command, quote_arg
+<<<<<<< HEAD
 from core import admin_auth
 from core import api_client
 from core import api_keys
 from core import filepicker
+=======
+from core import api_client
+from core import api_keys
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 from core import proxy as proxy_core
 from core import version_manager as vm
 
@@ -64,7 +76,11 @@ web_host = "127.0.0.1"    # 启动器自身监听地址（run_server 赋值）
 web_port = 8686           # 启动器自身监听端口
 _shutdown_event = threading.Event()  # 通知 SSE 线程退出
 
+<<<<<<< HEAD
 # 受保护的危险接口（方法, 路径）；本机与远程均需凭证（密码设置后所有人都须登录）。
+=======
+# 远程访问需认证的危险接口（方法, 路径）；本机访问免认证。
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 # 拆为两组：精确匹配（PROTECTED_EXACT）与前缀匹配（PROTECTED_PREFIX，如 /api/keys/{id}）。
 PROTECTED_EXACT = {
     ("POST", "/api/start"),
@@ -81,12 +97,17 @@ PROTECTED_EXACT = {
     ("POST", "/api/keys"),
     ("POST", "/api/keys/toggle"),
     ("POST", "/api/keys/rename"),
+<<<<<<< HEAD
     ("POST", "/api/auth/logout"),
     ("GET", "/api/pick"),
 }
 # 前缀匹配的受保护路径（不含方法，任何方法都需认证）。
 # 注意：/api/auth/ 下除 logout 外其余端点（login/setup/change-password/status）
 # 均不在此列——它们是登录入口或自证接口，不能被认证拦截。
+=======
+}
+# 前缀匹配的受保护路径（不含方法，任何方法都需认证）。
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 PROTECTED_PREFIX = ("/api/keys/",)
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
@@ -96,9 +117,12 @@ LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """应用生命周期：Ctrl+C 与 /api/shutdown 共用同一条关停清理路径。"""
+<<<<<<< HEAD
     # 启动时清理过期 session（服务重启后内存表已空，此处理论上无操作，
     # 但保留以应对未来持久化场景）
     admin_auth.cleanup_expired()
+=======
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
     yield
     # 关停清理：先通知 SSE 生成器退出，再强制结束子进程
     _shutdown_event.set()
@@ -136,6 +160,7 @@ def _extract_bearer_token(scope):
     return ""
 
 
+<<<<<<< HEAD
 async def _send_json_error(send, status_code, message, auth_expired=False):
     """纯 ASGI 方式发送 JSON 错误响应（不经 BaseHTTPMiddleware 包装）。
 
@@ -146,6 +171,11 @@ async def _send_json_error(send, status_code, message, auth_expired=False):
     if auth_expired:
         payload["auth_expired"] = True
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+=======
+async def _send_json_error(send, status_code, message):
+    """纯 ASGI 方式发送 JSON 错误响应（不经 BaseHTTPMiddleware 包装）。"""
+    body = json.dumps({"error": message}, ensure_ascii=False).encode("utf-8")
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
     await send({
         "type": "http.response.start",
         "status": status_code,
@@ -201,6 +231,7 @@ class AuthMiddleware:
     """纯 ASGI 认证中间件（三类路径分流）。
 
     类别 1 ``/v1/*`` — OpenAI 兼容推理 API：**始终要求 sk- Key**（含本机访问），
+<<<<<<< HEAD
            失败返回 OpenAI 错误格式（401），required_scope = proxy。session 不被接受。
     类别 2 ``/api/*`` 受保护 — 管理端点：**本机与远程均需凭证**（密码一旦设置，
            所有人都须登录），接受三类凭证：
@@ -210,6 +241,11 @@ class AuthMiddleware:
            失败返回字符串错误格式（403），session 失效附 ``auth_expired: true``。
            注：未设密码时前端引导本机完成 ``/api/auth/setup``（该端点内部校验本机，
            不经此中间件保护），设密后自动登录获得 session。
+=======
+           失败返回 OpenAI 错误格式（401），required_scope = proxy。
+    类别 2 ``/api/*`` 受保护 — 管理端点：本机免认证，远程需 sk- Key（admin）或
+           legacy ``auth_token``，失败返回字符串错误格式（403）。
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
     类别 3 其余路径（静态文件、非受保护 /api/*）— 透传。
     OPTIONS 预检一律放行（由外层 CORS 处理）。
     """
@@ -247,6 +283,7 @@ class AuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+<<<<<<< HEAD
         # ── 类别 2：/api/* 受保护 — 本机与远程均需凭证，字符串错误 ──
         if _is_protected(method, path):
             provided = _extract_bearer_token(scope)
@@ -254,6 +291,20 @@ class AuthMiddleware:
                 await _send_json_error(send, 403, "未授权：缺少凭证。请登录后重试。")
                 return
             # a) sk- API Key：管理端点需 admin scope（不变）
+=======
+        # ── 类别 2：/api/* 受保护 — 本机免认证，远程需凭证，字符串错误 ──
+        if _is_protected(method, path):
+            client = scope.get("client")
+            client_host = client[0] if client else ""
+            if client_host in LOCAL_HOSTS:
+                await self.app(scope, receive, send)
+                return
+            provided = _extract_bearer_token(scope)
+            if not provided:
+                await _send_json_error(send, 403, "未授权：缺少 API Key")
+                return
+            # sk- API Key：管理端点需 admin scope
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
             if provided.startswith(api_keys.KEY_PREFIX):
                 ok, info = api_keys.verify(api_keys_path, provided, "admin")
                 if ok:
@@ -261,6 +312,7 @@ class AuthMiddleware:
                     return
                 await _send_json_error(send, 403, f"未授权：{info}")
                 return
+<<<<<<< HEAD
             # b) sess- session token（管理员登录，替代 auth_token 主路径）
             if provided.startswith(admin_auth.SESSION_PREFIX):
                 ok, info = admin_auth.verify_session(provided)
@@ -273,12 +325,22 @@ class AuthMiddleware:
             # c) legacy auth_token 兼容（过渡期保留，比对改常数时间防时序攻击）
             legacy = str(config_data.get("auth_token", "") or "")
             if legacy and hmac.compare_digest(provided, legacy):
+=======
+            # 旧 auth_token 兼容
+            legacy = str(config_data.get("auth_token", "") or "")
+            if legacy and provided == legacy:
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
                 await self.app(scope, receive, send)
                 return
             # 拒绝：凭证不匹配
             await _send_json_error(
                 send, 403,
+<<<<<<< HEAD
                 "未授权：无效凭证。请登录后重试，或携带有效的 API Key。")
+=======
+                "未授权：无效凭证。请通过 Authorization: Bearer <token> 携带有效的 "
+                "API Key 或管理 Token。")
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
             return
 
         # ── 类别 3：其余路径（静态文件、/api/* 非受保护）— 透传 ──
@@ -302,8 +364,11 @@ def init_app(base):
         "last_model": "", "current_profile": "",
         "host": "127.0.0.1", "port": 8080,
         "auth_token": "", "allowed_origins": [],
+<<<<<<< HEAD
         "admin_password_hash": "",      # 管理员密码 PBKDF2 哈希（空=未初始化）
         "admin_auth_enabled": True,     # 是否启用管理员登录认证
+=======
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
     }
     config_data = load_json(config_path, defaults)
     if not isinstance(config_data, dict):
@@ -981,7 +1046,11 @@ async def v1_reverse_proxy(rest: str, request: Request):
 
 @app.get("/api/health")
 def api_health():
+<<<<<<< HEAD
     """探活 llama-server（管理端点，非 OpenAI API；公开，无需认证）。"""
+=======
+    """探活 llama-server（管理端点，非 OpenAI API；本机免认证）。"""
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
     if not runner.running:
         return JSONResponse(status_code=400, content={"error": "llama-server 未运行"})
     ok, data = api_client.health(runner.host, runner.port)
@@ -1116,6 +1185,7 @@ def delete_prompt(name: str):
     return new_list
 
 
+<<<<<<< HEAD
 # -------------------- 管理员登录认证 --------------------
 
 def _client_ip(request: Request) -> str:
@@ -1242,6 +1312,8 @@ def pick_path(type: str = Query("dir", pattern="^(dir|file)$"),
     return {"path": path, "available": available}
 
 
+=======
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 # -------------------- 未知 /api/* 兜底（保形：旧版返回 JSON 404）--------------------
 
 @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "DELETE"])
@@ -1275,6 +1347,7 @@ def run_server(host="127.0.0.1", port=8686):
     print(f"访问地址：http://{host}:{port}")
     print(f"OpenAI 兼容 API：http://{host}:{port}/v1/*（需 sk- API Key）")
     print(f"远程访问：使用 --host 0.0.0.0")
+<<<<<<< HEAD
     # 认证状态提示
     if admin_auth.is_password_set(config_path):
         print("已启用管理员登录认证：所有访问（含本机）需先登录获取 session")
@@ -1282,6 +1355,12 @@ def run_server(host="127.0.0.1", port=8686):
         print("检测到旧版 auth_token，建议在安全设置中迁移到管理员登录认证")
     else:
         print("提示：尚未设置管理员密码，首次使用请在浏览器中设置密码后登录。")
+=======
+    if config_data.get("auth_token"):
+        print("已启用 token 认证：远程危险接口需携带 Authorization: Bearer <token>")
+    else:
+        print("提示：未设置 auth_token，远程访问危险接口将被拒绝。本机访问不受影响。")
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
     print("按 Ctrl+C 停止服务")
     # ⚠️ 不用 server_instance.run()：其内部 asyncio.run() 会安装自己的 SIGINT
     # 处理器（_on_sigint），Ctrl+C 时抛 KeyboardInterrupt 并取消所有 asyncio 任务，

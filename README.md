@@ -6,9 +6,13 @@
 
 - **轻依赖**：仅 `fastapi` + `uvicorn` 两个第三方库，`pip install -r requirements.txt` 即可
 - **Web 管理**：浏览器界面，支持本地和远程服务器管理
+<<<<<<< HEAD
 - **管理员登录认证**：PBKDF2 密码哈希 + 内存 session 管理，远程访问需登录后操作
 - **原生文件选择器**：调用系统原生对话框选择路径，无需手动输入
 - **模块化前端**：HTML / CSS / JS 分离，登录页 + 菜单式控制台多页面架构
+=======
+- **服务端目录浏览**：远程环境下可视化选择目录与文件，无需手动输入路径
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 - **模块化设计**：核心逻辑（`core/`）与 UI（`web/`）完全分离
 - **配置即数据**：所有参数集中在 JSON 文件，代码不内嵌硬编码
 
@@ -32,6 +36,7 @@
 - 顶栏 API 徽章一键复制推理服务地址（`http://host:port`）
 - 进程运行但服务未就绪时可手动探测 `/health`
 
+<<<<<<< HEAD
 ### 安全与访问认证
 - **管理员登录认证**：PBKDF2-HMAC-SHA256（200,000 迭代）密码哈希，内存 session（TTL 12h），登录限流（5 次失败锁 5 分钟）
 - **密码设置后所有人（含本机）都须登录**：受保护管理端点（启停 / 更新 / 配置 / 关停等）本机与远程均需凭证
@@ -41,6 +46,15 @@
   - 旧 `auth_token` 作为主控凭证继续生效（向后兼容，过渡期保留）
 - 独立登录页 + 首屏认证状态判断：未设密码时本机引导设置，远程提示需本机初始化
 - UI 显示远程访问风险提示，引导设置管理员密码 / API Key
+=======
+### 安全与远程访问保护
+- 本机访问（`127.0.0.1` / `::1` / `localhost`）默认免认证
+- 远程访问危险接口（启停 / 更新 / 配置 / 关停）需 Bearer Token 或 API Key
+- 多 API Key 管理：可生成、命名、启停、回收、设置作用域（admin / proxy）的独立 Key
+  - 明文 Key 仅创建时显示一次，之后只存 SHA-256 哈希 + 前缀
+  - 旧 `auth_token` 作为主控凭证继续生效（向后兼容）
+- UI 显示远程访问风险提示，引导设置管理 Token / API Key
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 - CORS 默认同源，仅在显式配置 `allowed_origins` 时放开
 
 ### 参数方案编辑器
@@ -70,6 +84,7 @@
 - 自动滚动开关
 - 一键下载当前日志
 
+<<<<<<< HEAD
 ### 服务端目录浏览器与原生文件选择器
 - `GET /api/browse` 端点列出服务器文件系统目录（旧版 HTML 浏览器，仍可用）
 - `GET /api/pick` 端点调起服务端原生 OS 文件/目录选择对话框（推荐）
@@ -79,6 +94,15 @@
   - 远程无头服务器无显示器时返回空串，前端回退到手动输入
 - 路径配置面板点击「浏览…」调用原生选择器，返回服务端文件系统绝对路径
 - 支持选择目录（llama.cpp 目录、模型目录）或文件（方案文件、草稿模型、语法文件）
+=======
+### 服务端目录浏览器
+- `GET /api/browse` 端点列出服务器文件系统目录
+- 前端弹窗可视化浏览：逐级进入、回退上级、刷新
+- 支持选择目录（llama.cpp 目录、模型目录）或文件（方案文件）
+- Windows 枚举盘符，Unix 以 `/` 为根
+- 仅显示目录与相关文件（`.gguf` / `.json` / `llama-server*`），减少噪音
+- 权限错误安全处理，不阻断浏览
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 
 ### 参数方案系统
 - 每个 JSON 文件可包含多套方案（`cpu` / `gpu` / `mix`）
@@ -126,6 +150,7 @@ chcp 65001
 
 > 永久生效：在 PowerShell 配置文件（`$PROFILE`）中加入 `chcp 65001 > $null`，或设置系统区域为"使用 Unicode UTF-8 提供全球语言支持"（Beta）。
 
+<<<<<<< HEAD
 ### 访问认证与安全配置
 
 启动器要求**所有访问（含本机）在设置密码后都须登录**才能操作受保护的管理端点。首次使用时浏览器会引导设置管理员密码（仅本机可初始化），设密后每次打开需登录获取 session（TTL 12h，localStorage 持久化，无需频繁输入）。
@@ -141,6 +166,17 @@ chcp 65001
    - **API Key（多 Key 体系）**：在「安全设置 → API Key 管理」区点击"+ 新建 Key"，填写标签与作用域后创建。明文 Key 仅创建时显示一次，请立即保存。
    - **主控 Token（旧版兼容）**：直接编辑 `llama_launcher_config.json` 中的 `auth_token` 字段（过渡期保留）。
 3. 设置凭证后，所有请求危险接口（`/api/start`、`/api/stop`、`/api/update`、`/api/shutdown`、`/api/config` POST、方案编辑、回滚等）——**无论本机还是远程**——都须携带 `Authorization: Bearer <session_or_key_or_token>` 头
+=======
+### 远程访问与安全配置
+
+默认（`--host 127.0.0.1`）仅本机可访问，**危险接口免认证**，体验无变化。当使用 `--host 0.0.0.0` 暴露到局域网/公网时：
+
+1. **设置管理凭证（二选一或并用）**：
+   - **主控 Token（旧版兼容）**：在管理界面"安全设置"区输入 Token 并保存，或直接编辑 `llama_launcher_config.json` 中的 `auth_token` 字段。
+   - **API Key（推荐，多 Key 体系）**：在"安全设置 → API Key 管理"区点击"+ 新建 Key"，填写标签与作用域后创建。明文 Key 仅创建时显示一次，请立即保存。
+2. 设置凭证后，远程请求危险接口（`/api/start`、`/api/stop`、`/api/update`、`/api/shutdown`、`/api/config` POST、方案编辑、回滚等）须携带 `Authorization: Bearer <token_or_key>` 头
+3. 本机访问（`127.0.0.1` / `::1` / `localhost`）始终免认证，不影响本地体验
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 4. CORS 默认同源；如需跨域调用管理 API，在配置中设置 `allowed_origins`（如 `["https://example.com"]`）
 
 **API Key 作用域说明**：
@@ -159,6 +195,7 @@ chcp 65001
 ### 使用步骤
 
 1. 启动后浏览器打开 `http://localhost:8686`
+<<<<<<< HEAD
 2. 首次使用：登录页引导设置管理员密码（本机操作）；后续访问输入密码登录
 3. 登录后进入主控台，在 **路径配置** 面板点击「浏览…」调用系统文件选择器，选择 llama.cpp 目录与模型目录
 4. 在 **参数方案** 面板从列表选择方案，或新建/编辑方案参数
@@ -166,6 +203,14 @@ chcp 65001
 6. （可选）点击"启动前检查"预检启动条件
 7. 点击顶栏 **▶ 启动** 开始推理服务，**实时日志** 面板实时显示输出
 8. 启动后顶栏 API 徽章显示推理服务地址，点击复制；可在 **API 工作台** 调试 Chat / Embeddings / Reranking
+=======
+2. 在 **路径设置** 中点击"浏览…"选择 llama.cpp 目录（含 `llama-server`）与模型目录
+3. 点击"方案集"从 `configs/` 选择适合本机的方案文件，或"编辑方案"在 UI 内修改参数
+4. 在 **运行配置** 中选择模型与方案，设置 llama-server 监听地址和端口
+5. （可选）点击"健康检查"预检启动条件
+6. 点击顶栏 **▶ 启动** 开始推理服务，日志区实时显示输出
+7. 启动后顶栏 API 徽章显示推理服务地址，点击复制；可在 **API 工作台** 调试 Chat / Embeddings / Reranking
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 
 ## 项目架构
 
@@ -177,7 +222,11 @@ llama-API-launcher/
 ├── requirements.txt             # Python 依赖（fastapi + uvicorn）
 ├── .gitignore                   # 忽略 __pycache__、运行时配置、备份
 ├── README.md
+<<<<<<< HEAD
 ├── PROJECT_GUIDE.md             # 开发指南（架构、约定、认证模型、路线图）
+=======
+├── IMPROVEMENT_SUGGESTIONS.md   # 改进建议与任务清单
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 ├── LICENSE
 ├── llama_launcher_config.json   # 运行时配置（自动生成，已 gitignore）
 ├── assets/
@@ -193,10 +242,15 @@ llama-API-launcher/
 │   ├── version_manager.py       # GitHub 发布解析、下载、解压替换、回滚
 │   ├── api_client.py            # OpenAI 兼容 API 客户端（供示例生成与探活）
 │   ├── api_keys.py              # API Key 生成/哈希/校验/CRUD（纯同步零 Web 依赖）
+<<<<<<< HEAD
 │   ├── admin_auth.py            # 管理员认证：PBKDF2 密码哈希 + 内存 session + 登录限流
 │   ├── filepicker.py            # 原生 OS 文件选择器（Windows PowerShell / Linux zenity / macOS osascript）
 │   └── proxy.py                 # /v1/* 流式反向代理（http.client + read1，零第三方依赖）
 ├── tests/                       # 单元测试（unittest，test_v1_api / test_admin_auth 需 httpx）
+=======
+│   └── proxy.py                 # /v1/* 流式反向代理（http.client + read1，零第三方依赖）
+├── tests/                       # 单元测试（unittest，test_v1_api 需 httpx）
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 │   ├── __init__.py
 │   ├── test_launcher.py         # build_command / quote_arg
 │   ├── test_paths.py            # 路径检测、目录浏览、健康检查辅助
@@ -204,12 +258,16 @@ llama-API-launcher/
 │   ├── test_version_manager.py  # 资产名解析 / 回滚 / 备份检测
 │   ├── test_api_client.py       # API 客户端（mock urllib）
 │   ├── test_api_keys.py         # API Key 生成/校验/CRUD（36 项）
+<<<<<<< HEAD
 │   ├── test_admin_auth.py       # 管理员认证：密码哈希 / session / 限流 / API 端点（48 项）
+=======
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 │   └── test_v1_api.py           # /v1/* 反向代理 + 认证中间件（20 项，需 httpx）
 └── web/                         # Web 应用
     ├── __init__.py
     ├── app.py                   # FastAPI 应用（路由、SSE、认证、代理、静态托管）
     └── static/
+<<<<<<< HEAD
         ├── index.html           # 登录页（首屏认证状态判断 → 登录 / 首次设置 / 远程提示）
         ├── app.html             # 主控台（侧边栏菜单 + 7 面板：仪表盘 / 路径 / 方案 / 工作台 / 安全 / 版本 / 日志）
         ├── css/
@@ -224,6 +282,9 @@ llama-API-launcher/
             ├── workbench.js     # API 工作台（Chat / Embeddings / Rerank / 模型 / 示例 / Prompt）
             ├── security.js      # API Key 管理 + 管理员密码管理
             └── version.js       # 版本管理 + 回滚
+=======
+        └── index.html           # 前端界面（单页应用）
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 ```
 
 ### 模块职责
@@ -236,11 +297,17 @@ llama-API-launcher/
 | `core/version_manager.py` | GitHub 版本管理与回滚 | `fetch_releases()`, `download_file()`, `install_asset()`, `has_backup()`, `rollback_asset()` |
 | `core/api_client.py` | OpenAI 兼容 API 客户端（示例生成与探活） | `list_models()`, `chat_completions()`, `embeddings()`, `rerank()`, `gen_client_examples()`, `health()` |
 | `core/api_keys.py` | API Key 生成/哈希/校验/CRUD（纯同步零 Web 依赖） | `generate_key()`, `hash_key()`, `verify()`, `create_key()`, `revoke_key()`, `set_enabled()`, `update_label()`, `list_keys()` |
+<<<<<<< HEAD
 | `core/admin_auth.py` | 管理员认证：PBKDF2 密码哈希 + 内存 session + 登录限流 | `hash_password()`, `verify_password()`, `create_session()`, `verify_session()`, `revoke_session()`, `change_password()`, `set_password()` |
 | `core/filepicker.py` | 原生 OS 文件/目录选择器（subprocess 调用平台对话框） | `pick()`, `is_available()` |
 | `core/proxy.py` | `/v1/*` 流式反向代理（纯标准库 `http.client`） | `open_upstream()`, `filter_response_headers()` |
 | `web/app.py` | HTTP API 服务（FastAPI，含认证中间件与代理） | `app`, `run_server()`, `init_app()` |
 | `web/static/` | 前端界面（多文件模块化） | `index.html`（登录页）+ `app.html`（主控台）+ `css/` + `js/` |
+=======
+| `core/proxy.py` | `/v1/*` 流式反向代理（纯标准库 `http.client`） | `open_upstream()`, `filter_response_headers()` |
+| `web/app.py` | HTTP API 服务（FastAPI，含认证中间件与代理） | `app`, `run_server()`, `init_app()` |
+| `web/static/index.html` | 前端界面 | 单页应用，含所有 UI 逻辑 |
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 | `tests/` | 单元测试 | `python -m unittest discover tests` |
 
 ### ServerRunner 类
@@ -257,10 +324,17 @@ llama-API-launcher/
 ### Web 架构
 
 - **HTTP 服务器**：FastAPI + uvicorn（ASGI），阻塞型端点声明为普通 `def` 自动跑 anyio 线程池，SSE 长连接为唯一 `async def`，不阻塞其他请求
+<<<<<<< HEAD
 - **认证中间件**：本机与远程均需凭证（密码设置后须登录）；受保护路径需 `Authorization: Bearer <token>`，OPTIONS 预检放行
 - **CORS**：默认同源，仅在配置 `allowed_origins` 时挂载 `CORSMiddleware`
 - **路由分发**：FastAPI 路由装饰器（`@app.get`/`@app.post`），未知 `/api/*` 由兜底路由返回 JSON 404
 - **静态托管**：`StaticFiles` 挂载在 `/`（最后注册，API 路由优先匹配），`html=True` 自动服务 `index.html`（登录页）；`/app.html` 等其他 HTML 文件也可直接访问
+=======
+- **认证中间件**：本机访问免认证；远程访问受保护路径（`PROTECTED_PATHS`）需 `Authorization: Bearer <token>`，OPTIONS 预检放行
+- **CORS**：默认同源，仅在配置 `allowed_origins` 时挂载 `CORSMiddleware`
+- **路由分发**：FastAPI 路由装饰器（`@app.get`/`@app.post`），未知 `/api/*` 由兜底路由返回 JSON 404
+- **静态托管**：`StaticFiles` 挂载在 `/`（最后注册，API 路由优先匹配），`html=True` 自动服务 `index.html`
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 - **实时日志**：SSE（Server-Sent Events）经 `StreamingResponse` 推送，`queue.Queue` 收集日志，生成器 `await asyncio.sleep` 让出 CPU
 - **状态同步**：前端运行时每 3 秒轮询 `/api/status`
 - **优雅退出**：`_shutdown_event` 通知 SSE 生成器退出 + `server_instance.should_exit=True` 触发 uvicorn 关停；`lifespan` 统一清理子进程
@@ -268,7 +342,11 @@ llama-API-launcher/
 
 ## API 接口
 
+<<<<<<< HEAD
 > 标记 🔒 的端点为受保护路径：**本机与远程均须携带** `Authorization: Bearer <token>`（密码设置后所有人都须登录）。
+=======
+> 标记 🔒 的端点为受保护路径：远程访问（非本机）须携带 `Authorization: Bearer <token>`；本机访问免认证。
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 
 ### 配置与目录
 
@@ -285,7 +363,10 @@ llama-API-launcher/
 | `/api/configs/list` | GET | 列出 configs/ 下方案集文件 |
 | `/api/configs/load/{filename}` | POST 🔒 | 加载指定方案集 |
 | `/api/browse?path={path}` | GET | 浏览服务端目录（path 为空返回根） |
+<<<<<<< HEAD
 | `/api/pick?type={dir\|file}&filter={ext}&title={title}` | GET 🔒 | 调起原生 OS 文件/目录选择对话框，返回 `{path, available}` |
+=======
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 
 ### 服务控制与健康检查
 
@@ -321,8 +402,13 @@ llama-API-launcher/
 | `/v1/rerank` | POST 🔑 | Reranking |
 | `/v1/models` | GET 🔑 | 列出可用模型 |
 | `/v1/{任意路径}` | GET/POST/PUT/DELETE/PATCH 🔑 | 透明转发所有 `/v1/` 子路径至 llama-server |
+<<<<<<< HEAD
 | `/api/endpoints` | GET | 列出 base_url 与各端点路径（公开，无需认证） |
 | `/api/health` | GET | 探活 llama-server 就绪状态（公开，无需认证） |
+=======
+| `/api/endpoints` | GET | 列出 base_url 与各端点路径（管理端点，本机免认证） |
+| `/api/health` | GET | 探活 llama-server 就绪状态（管理端点，本机免认证） |
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 | `/api/examples` | GET | 生成 Python / JavaScript / cURL 调用示例（含 Bearer 头） |
 
 > 🔑 = 始终需要 `Authorization: Bearer sk-...`（含本机）。可用 OpenAI SDK 直接调用：`base_url="http://host:8686/v1"`、`api_key="sk-..."`。
@@ -337,6 +423,7 @@ llama-API-launcher/
 | `/api/keys/toggle` | POST 🔒 | 启停指定 Key（body: `{id, enabled}`） |
 | `/api/keys/rename` | POST 🔒 | 重命名指定 Key（body: `{id, label}`） |
 
+<<<<<<< HEAD
 ### 管理员认证
 
 | 接口 | 方法 | 说明 |
@@ -347,6 +434,8 @@ llama-API-launcher/
 | `/api/auth/setup` | POST | 首次设置密码（仅本机，仅当密码未初始化；body: `{password, confirm}`） |
 | `/api/auth/change-password` | POST | 修改密码（body: `{old_password, new_password}`，改密后吊销所有 session） |
 
+=======
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 ## 参数方案格式
 
 每个 JSON 文件顶层为方案名到方案字典的映射，常见方案名 `cpu` / `gpu` / `mix`。
@@ -407,6 +496,7 @@ FastAPI + uvicorn（ASGI）下，阻塞型端点（网络/磁盘/子进程/sleep
 ### 认证与 CORS
 - **认证中间件**（纯 ASGI，内层）先于 CORS 注册，OPTIONS 预检由 CORS（外层）先处理
 - 三类路径分流：
+<<<<<<< HEAD
   - **`/v1/*`（OpenAI 兼容推理 API）**：始终要求 `sk-` Key（含本机），`required_scope = proxy`，session 不被接受；失败返回 OpenAI 对象格式错误（401）
   - **`/api/*` 受保护管理端点**：**本机与远程均需凭证**（密码设置后所有人都须登录），接受三类凭证：
     - a) `sk-` admin Key（`required_scope = admin`）
@@ -418,6 +508,14 @@ FastAPI + uvicorn（ASGI）下，阻塞型端点（网络/磁盘/子进程/sleep
 - `sess-` 前缀凭证走 `core/admin_auth.verify_session`（懒清理过期项）
 - 受保护路径拆为两组：`PROTECTED_EXACT`（精确匹配）与 `PROTECTED_PREFIX`（前缀匹配，如 `/api/keys/{id}`）
 - 未设密码时前端引导本机完成 `/api/auth/setup`（该端点内部校验本机，不经中间件保护）；设密后所有受保护路径均需凭证
+=======
+  - **`/v1/*`（OpenAI 兼容推理 API）**：始终要求 `sk-` Key（含本机），`required_scope = proxy`；失败返回 OpenAI 对象格式错误（401）
+  - **`/api/*` 受保护管理端点**：本机免认证，远程需 `sk-` Key（`required_scope = admin`）或 legacy `auth_token`；失败返回字符串格式错误（403）
+  - **其余路径**（静态文件、非受保护 `/api/*`）：透传
+- `sk-` 前缀凭证走 `core/api_keys.verify`（锁内重载 + 60s debounce 更新 `last_used_at`）；其余凭证与配置 `auth_token` 比对（旧版兼容路径）
+- 受保护路径拆为两组：`PROTECTED_EXACT`（精确匹配）与 `PROTECTED_PREFIX`（前缀匹配，如 `/api/keys/{id}`）
+- 未设置任何凭证时，受保护路径拒绝远程访问；本机访问不受影响
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 - CORS 默认不挂载（同源）；配置 `allowed_origins` 后才挂载 `CORSMiddleware`
 
 ### 连接容错
@@ -458,6 +556,7 @@ FastAPI + uvicorn（ASGI）下，阻塞型端点（网络/磁盘/子进程/sleep
 - Prompt 模板持久化到 `configs/prompts.json`，支持增删改与快速应用到 Chat 面板
 
 ### 前端资源优化
+<<<<<<< HEAD
 - 零外部资源：无 CDN、无 web 字体，系统字体栈，CSS/JS 分离为多文件
 - 白底黑字面板式极简设计：CSS 变量集中配色，渲染开销极低
 - 多文件模块化架构：`index.html`（登录页）+ `app.html`（主控台）+ `css/` + `js/`（8 个模块）
@@ -472,6 +571,20 @@ FastAPI + uvicorn（ASGI）下，阻塞型端点（网络/磁盘/子进程/sleep
 
 ```bash
 # 运行全部测试（203 项）
+=======
+- 零外部资源：无 CDN、无 web 字体，系统字体栈，CSS/JS 全内联
+- 白底黑字面板式极简设计：CSS 变量集中配色，无圆角/阴影/动画，渲染开销极低
+- 响应式自适应：`max-width:640px` 断点下表单与分栏纵向堆叠，适配手机/平板/桌面
+- 状态轮询仅运行时进行，停止后清除
+- 单文件 HTML，首次加载仅 1 个请求
+
+## 测试
+
+项目附带 `unittest` 测试套件（`tests/` 目录），共 155 项测试覆盖纯逻辑函数与 API 层：
+
+```bash
+# 运行全部测试（155 项）
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 python -m unittest discover tests
 
 # 运行单个模块
@@ -481,11 +594,18 @@ python -m unittest tests.test_profiles
 python -m unittest tests.test_version_manager
 python -m unittest tests.test_api_client
 python -m unittest tests.test_api_keys
+<<<<<<< HEAD
 python -m unittest tests.test_admin_auth
 python -m unittest tests.test_v1_api
 ```
 
 测试不依赖真实 llama-server、真实模型文件或真实 GitHub 网络。`test_api_client.py` 用 `unittest.mock` mock 掉 `urllib.request.urlopen`；`test_v1_api.py` 用 `ThreadingHTTPServer` 起 mock llama-server + `TestClient` 验证 `/v1/*` 反向代理与认证中间件（需 `httpx`，仅测试依赖）；`test_admin_auth.py` 用 `TestClient` 验证密码哈希、session 管理、登录限流与 `/api/auth/*` 端点（48 项，需 `httpx`）。
+=======
+python -m unittest tests.test_v1_api
+```
+
+测试不依赖真实 llama-server、真实模型文件或真实 GitHub 网络。`test_api_client.py` 用 `unittest.mock` mock 掉 `urllib.request.urlopen`；`test_v1_api.py` 用 `ThreadingHTTPServer` 起 mock llama-server + `TestClient` 验证 `/v1/*` 反向代理与认证中间件（需 `httpx`，仅测试依赖）。
+>>>>>>> ec68ea5aeec7f770c70ff320308327bd8bd37a5b
 
 ## 注意事项
 
